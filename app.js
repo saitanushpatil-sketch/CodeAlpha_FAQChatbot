@@ -1,178 +1,87 @@
-// app.js
-// Main application logic — handles UI interactions and API calls
+// app.js — No API key needed, pure NLP matching
 
-// ─── State ────────────────────────────────────────────────────────────────────
-let isProcessing = false;
+let busy = false;
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
 document.getElementById('initTime').textContent = getTime();
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function getTime() {
   return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+function scrollBot() {
+  const b = document.getElementById('chatBody');
+  b.scrollTop = b.scrollHeight;
 }
 
-function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    handleSend();
-  }
-}
-
-function useSuggestion(btn) {
-  document.getElementById('inputBox').value = btn.textContent;
-  autoResize(document.getElementById('inputBox'));
-  handleSend();
-}
-
-function scrollToBottom() {
-  const w = document.getElementById('chatWindow');
-  w.scrollTop = w.scrollHeight;
-}
-
-// ─── Render Messages ──────────────────────────────────────────────────────────
-function appendMessage(role, html, confidence = null) {
-  const chatWindow = document.getElementById('chatWindow');
-  const div = document.createElement('div');
-  div.className = `msg ${role}`;
-
-  const avatarLabel = role === 'bot' ? 'AI' : 'You';
+function appendMsg(role, html, conf = null) {
+  const body = document.getElementById('chatBody');
+  const d = document.createElement('div');
+  d.className = `msg ${role}`;
+  const label = role === 'bot' ? 'JAR' : 'YOU';
   let extra = '';
-
-  if (role === 'bot' && confidence !== null) {
-    const pct = Math.min(Math.round(confidence * 100), 98);
-    const barColor = pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444';
-    extra = `
-      <div class="confidence-row">
-        <div class="conf-bar"><div class="conf-fill" style="width:${pct}%; background:${barColor}"></div></div>
-        <span class="conf-label">Match: ${pct}%</span>
-      </div>`;
+  if (conf !== null && role === 'bot') {
+    const pct = Math.min(Math.round(conf * 100), 98);
+    const col = pct >= 70 ? '#f0a500' : pct >= 40 ? '#e74c3c' : '#666';
+    extra = `<div class="conf-row"><div class="conf-track"><div class="conf-bar" style="width:${pct}%;background:${col}"></div></div><span class="conf-pct">MATCH: ${pct}%</span></div>`;
   }
-
-  div.innerHTML = `
-    <div class="avatar">${avatarLabel}</div>
-    <div class="bubble-wrap">
-      <div class="bubble">${html}${extra}</div>
-      <div class="timestamp">${getTime()}</div>
-    </div>`;
-
-  chatWindow.appendChild(div);
-  scrollToBottom();
-  return div;
+  d.innerHTML = `<div class="msg-icon">${label}</div><div class="bubble-col"><div class="bubble">${html}${extra}</div><div class="msg-time">${getTime()}</div></div>`;
+  body.appendChild(d);
+  scrollBot();
 }
 
 function showTyping() {
-  const chatWindow = document.getElementById('chatWindow');
-  const div = document.createElement('div');
-  div.className = 'msg bot';
-  div.id = 'typingIndicator';
-  div.innerHTML = `
-    <div class="avatar">AI</div>
-    <div class="bubble-wrap">
-      <div class="bubble typing-bubble">
-        <span></span><span></span><span></span>
-      </div>
-    </div>`;
-  chatWindow.appendChild(div);
-  scrollToBottom();
+  const body = document.getElementById('chatBody');
+  const d = document.createElement('div');
+  d.className = 'msg bot'; d.id = 'typing';
+  d.innerHTML = `<div class="msg-icon">JAR</div><div class="bubble-col"><div class="bubble typing-bubble"><span></span><span></span><span></span></div></div>`;
+  body.appendChild(d); scrollBot();
 }
 
 function removeTyping() {
-  const el = document.getElementById('typingIndicator');
-  if (el) el.remove();
+  const t = document.getElementById('typing');
+  if (t) t.remove();
 }
 
-// ─── Claude API Call ──────────────────────────────────────────────────────────
-/**
- * askClaude(userQuery, matchedFaq, score)
- *
- * Sends the user query + best-matched FAQ to Claude API.
- * Claude's job: rephrase the FAQ answer conversationally.
- * This makes responses feel natural instead of copy-pasted.
- *
- * If the API fails for any reason, we fall back to the raw FAQ answer.
- */
-async function askClaude(userQuery, matchedFaq, score) {
-  const lowConfidence = score < 0.05;
-
-  const systemPrompt = `You are a helpful FAQ chatbot assistant for a software product. 
-Your job is to answer user questions based on the FAQ knowledge base provided.
-Keep responses concise (2-4 sentences), friendly, and conversational.
-Do NOT mention "FAQ", "knowledge base", "cosine similarity", or "matching" in your response.
-Just answer naturally like a helpful support agent would.`;
-
-  const userPrompt = lowConfidence
-    ? `User asked: "${userQuery}"
-The best FAQ match I found has a very low confidence score. 
-Please respond saying you don't have specific information on that topic, 
-and suggest they contact support at support@company.com for help.`
-    : `User asked: "${userQuery}"
-
-Best matching FAQ:
-Q: ${matchedFaq.q}
-A: ${matchedFaq.a}
-
-Rephrase this answer conversationally for the user's specific question.`;
-
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }]
-      })
-    });
-
-    const data = await response.json();
-    return data.content?.[0]?.text || matchedFaq.a;
-  } catch (err) {
-    console.error('Claude API error:', err);
-    return matchedFaq.a; // fallback to raw FAQ answer
-  }
-}
-
-// ─── Main Handler ─────────────────────────────────────────────────────────────
-async function handleSend() {
-  if (isProcessing) return;
-
-  const inputBox = document.getElementById('inputBox');
-  const query = inputBox.value.trim();
-  if (!query) return;
-
-  isProcessing = true;
-  document.getElementById('sendBtn').disabled = true;
-  document.getElementById('suggestions').style.display = 'none';
-
-  // Reset input
-  inputBox.value = '';
-  inputBox.style.height = 'auto';
-
-  // Show user message
-  appendMessage('user', query);
-
-  // Show typing
+async function fire() {
+  if (busy) return;
+  const inp = document.getElementById('jarvisInput');
+  const q = inp.value.trim();
+  if (!q) return;
+  busy = true;
+  document.getElementById('fireBtn').disabled = true;
+  inp.value = ''; inp.style.height = 'auto';
+  appendMsg('user', q);
   showTyping();
 
-  // Step 1: Find best matching FAQ using cosine similarity
-  const { faq, score } = findBestMatch(query);
+  // Simulate thinking delay
+  await new Promise(r => setTimeout(r, 800));
 
-  // Step 2: Get conversational response from Claude
-  const reply = await askClaude(query, faq, score);
-
-  // Step 3: Display response with confidence
+  const { faq, score } = bestMatch(q);
   removeTyping();
-  const displayScore = Math.min(score + 0.3, 0.98); // slight visual boost for UX
-  appendMessage('bot', reply, displayScore);
 
-  isProcessing = false;
-  document.getElementById('sendBtn').disabled = false;
-  inputBox.focus();
+  let reply;
+  if (score < 0.05) {
+    reply = "I'm afraid that query falls outside my current knowledge base, sir. I would recommend contacting support directly for assistance with that matter.";
+  } else {
+    reply = faq.a;
+  }
+
+  appendMsg('bot', reply, Math.min(score + 0.3, 0.98));
+  busy = false;
+  document.getElementById('fireBtn').disabled = false;
+  inp.focus();
 }
+
+function useSugg(text) {
+  document.getElementById('jarvisInput').value = text;
+  fire();
+}
+
+document.getElementById('jarvisInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); fire(); }
+});
+
+document.getElementById('jarvisInput').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+});
