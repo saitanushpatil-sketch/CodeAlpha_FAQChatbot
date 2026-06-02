@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>J.A.R.V.I.S — FAQ Assistant · CodeAlpha</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <div class="jarvis-wrap">
+    <div class="scan-line"></div>
+    <div class="corner tl"></div><div class="corner tr"></div>
+    <div class="corner bl"></div><div class="corner br"></div>
+
+    <div class="hud-header">
+      <div class="arc-ring">
+        <div class="arc-inner"><div class="arc-dot"></div></div>
+      </div>
+      <div class="hud-title">
+        <h1>J.A.R.V.I.S</h1>
+        <p>Just A Rather Very Intelligent System &middot; FAQ Module</p>
+      </div>
+      <div class="sys-status">
+        <div class="sys-row"><div class="sys-dot"></div>NLP ENGINE ONLINE</div>
+        <div class="sys-row"><div class="sys-dot amber"></div>SEMANTIC CORE READY</div>
+      </div>
+    </div>
+    <div class="hud-divider"></div>
+
+    <div class="chat-body" id="chatBody">
+      <div class="msg bot">
+        <div class="msg-icon">JAR</div>
+        <div class="bubble-col">
+          <div class="bubble">
+            Good day. I am J.A.R.V.I.S — your FAQ intelligence module.<br><br>
+            I process your queries through semantic vectorization and cosine similarity matching to retrieve the most relevant response from my knowledge base.<br><br>
+            How may I assist you, sir?
+          </div>
+          <div class="msg-time" id="initTime"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sugg-section">
+      <div class="sugg-label">&#9658; QUICK QUERIES</div>
+      <div class="sugg-wrap">
+        <button class="sugg-btn" onclick="useSugg('How do I reset my password?')">Reset password</button>
+        <button class="sugg-btn" onclick="useSugg('What are the pricing plans?')">Pricing plans</button>
+        <button class="sugg-btn" onclick="useSugg('How do I contact support?')">Contact support</button>
+        <button class="sugg-btn" onclick="useSugg('Can I cancel my subscription?')">Cancel subscription</button>
+        <button class="sugg-btn" onclick="useSugg('Is my data secure?')">Data security</button>
+        <button class="sugg-btn" onclick="useSugg('Do you offer a free trial?')">Free trial</button>
+        <button class="sugg-btn" onclick="useSugg('Is there a mobile app?')">Mobile app</button>
+        <button class="sugg-btn" onclick="useSugg('How do I export my data?')">Export data</button>
+      </div>
+    </div>
+
+    <div class="input-zone">
+      <textarea
+        id="jarvisInput"
+        placeholder="Enter query for J.A.R.V.I.S..."
+        rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();fire()}"
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"
+      ></textarea>
+      <button id="fireBtn" onclick="fire()" aria-label="Send query">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </div>
+
+    <div class="hud-footer">
+      STARK INDUSTRIES &middot; TASK 2 &middot; P.SAI TANUSH &middot; CA/DF1/99929 &middot; CODEALPHA AI INTERNSHIP 2026
+    </div>
+  </div>
+
+  <script src="faq-data.js"></script>
+  <script src="nlp.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
